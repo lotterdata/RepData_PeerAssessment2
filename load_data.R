@@ -1,4 +1,5 @@
 library(dplyr)
+library(stringr)
 
 all <- read.csv("repdata_data_StormData.csv.bz2")
 
@@ -6,7 +7,7 @@ all$STATE <- as.character(all$STATE)
 all$COUNTYNAME <- as.character(all$COUNTYNAME)
 all$PROPDMGEXP <- as.character(all$PROPDMGEXP)
 all$CROPDMGEXP <- as.character(all$CROPDMGEXP)
-
+all$BGN_DATE <- as.character(all$BGN_DATE)
 
 clean1 <- select(all,STATE__,BGN_DATE,COUNTY,COUNTYNAME,STATE,EVTYPE,
                  FATALITIES,INJURIES,PROPDMG,PROPDMGEXP,CROPDMG,CROPDMGEXP) %>%
@@ -32,13 +33,15 @@ econ.loss <- function(x,y){
            "B" = 1000000000,
            1)
 }
-          
+  
+extract.year <- function(x){
+    str_sub(x,
+            start=str_locate_all(x,"/")[[1]][2,1]+1,
+            end=str_locate_all(x,"/")[[1]][2,1]+4)
+}
+
 clean2 <- filter(clean1,FATALITIES>0 | INJURIES>0 | PROPDMG>0 | CROPDMG>0) %>%
           mutate(ECONLOSS = mapply(econ.loss,PROPDMG,PROPDMGEXP)+
-                            mapply(econ.loss,CROPDMG,CROPDMGEXP))
+                            mapply(econ.loss,CROPDMG,CROPDMGEXP)) %>%
+          mutate(YEAR = sapply(BGN_DATE,extract.year))
 
-
-# 
-# summer <- group_by(clean2,EVTYPE) %>%
-#           summarise(critter =sum(ECONLOSS)) %>% 
-#           arrange(desc(critter))
