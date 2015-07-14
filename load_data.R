@@ -8,6 +8,7 @@ all$COUNTYNAME <- as.character(all$COUNTYNAME)
 all$PROPDMGEXP <- as.character(all$PROPDMGEXP)
 all$CROPDMGEXP <- as.character(all$CROPDMGEXP)
 all$BGN_DATE <- as.character(all$BGN_DATE)
+all$EVTYPE <- as.character(all$EVTYPE)
 
 clean1 <- select(all,STATE__,BGN_DATE,COUNTY,COUNTYNAME,STATE,EVTYPE,
                  FATALITIES,INJURIES,PROPDMG,PROPDMGEXP,CROPDMG,CROPDMGEXP) %>%
@@ -43,5 +44,56 @@ extract.year <- function(x){
 clean2 <- filter(clean1,FATALITIES>0 | INJURIES>0 | PROPDMG>0 | CROPDMG>0) %>%
           mutate(ECONLOSS = mapply(econ.loss,PROPDMG,PROPDMGEXP)+
                             mapply(econ.loss,CROPDMG,CROPDMGEXP)) %>%
-          mutate(YEAR = sapply(BGN_DATE,extract.year))
+          mutate(YEAR = as.numeric(sapply(BGN_DATE,extract.year))) %>%
+          filter(YEAR > 2007)
+            #1993 another possible cutoff
+
+
+event.class <- function(x){
+    switch(as.character(x),
+           "ASTRONOMICAL LOW TIDE" = "Other",
+           "AVALANCHE" = "Winter",
+           "BLIZZARD" = "Winter",
+           "COASTAL FLOOD" = "Flood",
+           "COLD/WIND CHILL" = "Winter",
+           "DENSE FOG" = "Other",
+           "DROUGHT" = "Drought",
+           "DUST DEVIL" = "Dust",
+           "DUST STORM" = "Dust",
+           "EXCESSIVE HEAT" = "Heat",
+           "EXTREME COLD/WIND CHILL" = "Winter",
+           "FLASH FLOOD" = "Flood",
+           "FLOOD" = "Flood",
+           "FREEZING FOG" = "Winter",
+           "FROST/FREEZE" = "Winter",
+           "FUNNEL CLOUD" = "Tornado",
+           "HAIL" = "Hail",
+           "HEAT" = "Heat",
+           "HEAVY RAIN" = "Other",
+           "HEAVY SNOW" = "Winter",
+           "HIGH SURF" = "Other",
+           "HIGH WIND" = "Wind",
+           "HURRICANE" = "Hurricane-Tropical",
+           "ICE STORM" = "Winter",
+           "LAKE-EFFECT SNOW" = "Winter",
+           "LAKESHORE FLOOD" = "Flood",
+           "LANDSLIDE" = "Other",
+           "LIGHTNING" = "Thunderstorm",
+           "RIP CURRENT" = "Other",
+           "SEICHE" = "Other",
+           "STORM SURGE/TIDE" = "Other",
+           "STRONG WIND" = "Wind",
+           "THUNDERSTORM WIND" = "Thunderstorm",
+           "TORNADO" = "Tornado",
+           "TROPICAL DEPRESSION" = "Hurricane-Tropical",
+           "TROPICAL STORM" = "Hurricane-Tropical",
+           "TSUNAMI" = "Other",
+           "WILDFIRE" = "Other",
+           "WINTER STORM" = "Winter",
+           "WINTER WEATHER" = "Winter",
+           "Other"
+           )
+}
+
+clean2$EVCLASS <- sapply(clean2$EVTYPE,event.class)
 
