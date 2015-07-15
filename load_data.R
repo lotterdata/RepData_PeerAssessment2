@@ -1,5 +1,6 @@
 library(dplyr)
 library(stringr)
+library(ggplot2)
 
 all <- read.csv("repdata_data_StormData.csv.bz2")
 
@@ -57,9 +58,9 @@ event.class <- function(x){
            "COASTAL FLOOD" = "Flood",
            "COLD/WIND CHILL" = "Winter",
            "DENSE FOG" = "Other",
-           "DROUGHT" = "Drought",
-           "DUST DEVIL" = "Dust",
-           "DUST STORM" = "Dust",
+           "DROUGHT" = "Other",
+           "DUST DEVIL" = "Other",
+           "DUST STORM" = "Other",
            "EXCESSIVE HEAT" = "Heat",
            "EXTREME COLD/WIND CHILL" = "Winter",
            "FLASH FLOOD" = "Flood",
@@ -96,4 +97,32 @@ event.class <- function(x){
 }
 
 clean2$EVCLASS <- sapply(clean2$EVTYPE,event.class)
+
+totals <- group_by(clean2,STATE) %>%
+          summarise(tot.fatal = sum(FATALITIES), tot.econ = sum(ECONLOSS))
+
+subtotals <- group_by(clean2,STATE,EVCLASS) %>%
+             summarise(tot.fatal = sum(FATALITIES), tot.econ = sum(ECONLOSS))
+
+plot.data <- inner_join(totals,subtotals,by="STATE") %>%
+             mutate(prop.fatal = tot.fatal.y/tot.fatal.x) %>%
+             mutate(prop.econ = tot.econ.y/tot.econ.x)
+
+
+g.fatal <- ggplot(plot.data ,aes(x=STATE,fill=EVCLASS,weight=prop.fatal))
+
+plot.fatal <- g.fatal +
+              geom_histogram() +
+              coord_flip()
+
+print(plot.fatal)
+
+
+g.econ <- ggplot(plot.data ,aes(x=STATE,fill=EVCLASS,weight=prop.econ))
+
+plot.econ <- g.econ +
+             geom_histogram() +
+             coord_flip()
+
+print(plot.econ)
 
