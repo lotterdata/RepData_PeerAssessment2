@@ -1,7 +1,25 @@
-library(dplyr)
+---
+title: "Economic and Health Consequences of Extreme Weather"
+output: html_document
+---
+
+
+## Synopsis  
+This report summarizes the effects of extreme weather in the United State on health, measured by fatalities, and economic losses, measured by total losses from both property and crop damage, using the NOAA Storm Database. (Since we have no data on the severity of injuries we use only fatalities to measure health impacts.) For the sake of giving a high-level view, we categorize the storm events into nine categories: Flood, Hail, Heat, Hurricane/Tropical Storm, Other, Thunderstorm, Tornado, Wind, Winter.Since the purpose of the report is to inform local officials, we give percentages for each state; otherwise the information for smaller states would be obscured in the exhibits.  
+
+## Data Processing  
+
+We begin by loading the packages we will need.
+
+```{r}
+library(dplyr,warn.conflicts=FALSE)
 library(stringr)
 library(ggplot2)
+```
 
+Then we load the zipped file containing the data and convert several of the factor variables into character strings.
+
+```{r,cache=TRUE}
 all <- read.csv("repdata_data_StormData.csv.bz2")
 
 all$STATE <- as.character(all$STATE)
@@ -11,6 +29,11 @@ all$CROPDMGEXP <- as.character(all$CROPDMGEXP)
 all$BGN_DATE <- as.character(all$BGN_DATE)
 all$EVTYPE <- as.character(all$EVTYPE)
 
+```
+
+We then select only those columns that we will need for our analysis. Also, we restrict the data to the 50 states and the District of Columbia (by using only the state codes in the column STATE__ that are less than 60). We also filter out any rows where the state code does not match the state abbreviation since we cannot be certain where the storm event occurred in those cases.
+
+```{r}
 clean1 <- select(all,STATE__,BGN_DATE,COUNTY,COUNTYNAME,STATE,EVTYPE,
                  FATALITIES,INJURIES,PROPDMG,PROPDMGEXP,CROPDMG,CROPDMGEXP) %>%
           filter(STATE__ < 60) %>%
@@ -22,6 +45,10 @@ clean1 <- select(all,STATE__,BGN_DATE,COUNTY,COUNTYNAME,STATE,EVTYPE,
           filter(!(STATE__==24 & STATE == "OH")) %>%
           filter(!(STATE__==35 & STATE == "NJ")) 
 
+```
+Next, we want to add two variables, one for the total economic losses (property and crop damage) and one for the year of the storm event. We also filter out all events from year 2007 and earlier, since the current reporting standards were put in place mid -2007.
+
+```{r}
 econ.loss <- function(x,y){
     x*
     switch(as.character(y),
@@ -47,9 +74,11 @@ clean2 <- filter(clean1,FATALITIES>0 | INJURIES>0 | PROPDMG>0 | CROPDMG>0) %>%
                             mapply(econ.loss,CROPDMG,CROPDMGEXP)) %>%
           mutate(YEAR = as.numeric(sapply(BGN_DATE,extract.year))) %>%
           filter(YEAR > 2007)
-            #1993 another possible cutoff
+```
 
+Next we simplify the classification scheme by putting each event type into one of 9 categories.
 
+```{r}
 event.class <- function(x){
     switch(as.character(x),
            "ASTRONOMICAL LOW TIDE" = "Other",
@@ -97,7 +126,11 @@ event.class <- function(x){
 }
 
 clean2$EVCLASS <- sapply(clean2$EVTYPE,event.class)
+```
 
+Finally we calculate, for each state, the percentage of fatalities and economic losses in each major category
+
+```{r}
 totals <- group_by(clean2,STATE) %>%
           summarise(tot.fatal = sum(FATALITIES), tot.econ = sum(ECONLOSS))
 
@@ -107,8 +140,15 @@ subtotals <- group_by(clean2,STATE,EVCLASS) %>%
 plot.data <- inner_join(totals,subtotals,by="STATE") %>%
              mutate(prop.fatal = tot.fatal.y/tot.fatal.x) %>%
              mutate(prop.econ = tot.econ.y/tot.econ.x)
+```
 
 
+
+## Results
+
+We reoprt our results in the form of horizontal bar charts.
+
+```{r}
 g.fatal <- ggplot(plot.data ,aes(x=STATE,fill=EVCLASS,weight=prop.fatal))
 
 plot.fatal <- g.fatal +
@@ -117,8 +157,9 @@ plot.fatal <- g.fatal +
               ggtitle("Percent of Fatalities in Nine Storm Categories, By State")
 
 print(plot.fatal)
+```
 
-
+```{r}
 g.econ <- ggplot(plot.data ,aes(x=STATE,fill=EVCLASS,weight=prop.econ))
 
 plot.econ <- g.econ +
@@ -127,4 +168,6 @@ plot.econ <- g.econ +
              ggtitle("Percent of Economic Losses in Nine Storm Categories, By State")
 
 print(plot.econ)
+```
+
 
