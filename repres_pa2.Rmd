@@ -15,6 +15,7 @@ We begin by loading the packages we will need.
 library(dplyr,warn.conflicts=FALSE)
 library(stringr)
 library(ggplot2)
+library(scales)
 ```
 
 Then we load the zipped file containing the data and convert several of the factor variables into character strings.
@@ -46,9 +47,9 @@ clean1 <- select(all,STATE__,BGN_DATE,COUNTY,COUNTYNAME,STATE,EVTYPE,
           filter(!(STATE__==35 & STATE == "NJ")) 
 
 ```
-Next, we want to add two variables, one for the total economic losses (property and crop damage) and one for the year of the storm event. We also filter out all events from year 2007 and earlier, since the current reporting standards were put in place mid -2007.
+Next, we want to add two variables, one for the total economic losses (property and crop damage) and one for the year of the storm event. We also filter out all events from year 2007 and earlier, since the current reporting standards were put in place mid -2007. We also filter out data points that had no health or economic consequences. 
 
-```{r}
+```{r,cache=TRUE}
 econ.loss <- function(x,y){
     x*
     switch(as.character(y),
@@ -76,9 +77,9 @@ clean2 <- filter(clean1,FATALITIES>0 | INJURIES>0 | PROPDMG>0 | CROPDMG>0) %>%
           filter(YEAR > 2007)
 ```
 
-Next we simplify the classification scheme by putting each event type into one of 9 categories.
+Next we simplify the classification scheme by putting each event type into one of 9 categories. 
 
-```{r}
+```{r,cache=TRUE}
 event.class <- function(x){
     switch(as.character(x),
            "ASTRONOMICAL LOW TIDE" = "Other",
@@ -146,25 +147,29 @@ plot.data <- inner_join(totals,subtotals,by="STATE") %>%
 
 ## Results
 
-We reoprt our results in the form of horizontal bar charts.
+We report our results in the form of horizontal bar charts.
 
-```{r}
+```{r,fig.height=9}
 g.fatal <- ggplot(plot.data ,aes(x=STATE,fill=EVCLASS,weight=prop.fatal))
 
 plot.fatal <- g.fatal +
               geom_histogram() +
               coord_flip() +
+              scale_y_continuous(labels = percent) +
+              ylab("Percent of Total") +
               ggtitle("Percent of Fatalities in Nine Storm Categories, By State")
 
 print(plot.fatal)
 ```
 
-```{r}
+```{r,fig.height=9}
 g.econ <- ggplot(plot.data ,aes(x=STATE,fill=EVCLASS,weight=prop.econ))
 
 plot.econ <- g.econ +
              geom_histogram() +
              coord_flip() +
+             scale_y_continuous(labels = percent) +
+             ylab("Percent of Total") +    
              ggtitle("Percent of Economic Losses in Nine Storm Categories, By State")
 
 print(plot.econ)
