@@ -49,6 +49,10 @@ clean1 <- select(all,STATE__,BGN_DATE,COUNTY,COUNTYNAME,STATE,EVTYPE,
 ```
 Next, we want to add two variables, one for the total economic losses (property and crop damage) and one for the year of the storm event. We also filter out all events from year 2007 and earlier, since the current reporting standards were put in place mid -2007. We also filter out data points that had no health or economic consequences. 
 
+The economic losses are calculated as follows. Per the NOAA reporting guidelines, the columns PROPDMG and CROPDMG should contain three significant digits. The magnitudes of these damage estimates are indicated in columns PROPDMGEXP and CROPDMGEXP using characters, such H for hundreds, K for thousands, and so on. See code below for the complete mapping. The function econ.loss calculates the numerical value of the loss given values for PROPDMG/PROPDMGEXP or CROPDMG/CROPDMGEXP. We then use mapply and this function to calculate the economic loss, whether from property damage or crop damage or both, for each data point.
+
+To calculate the year, we use functions from the stringr package to identify the second instance of a forward slash in BGN_DATE and pick out the next four characters.
+
 ```{r,cache=TRUE}
 econ.loss <- function(x,y){
     x*
